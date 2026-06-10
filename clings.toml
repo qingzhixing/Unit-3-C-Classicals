@@ -1,0 +1,6 @@
+# Exercise metadata in exercises/*/exercises.toml (auto-discovered)
+
+[[units]]
+id = "unit3"
+title = "C Classicals"
+lessons = "49-72"

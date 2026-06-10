@@ -1,0 +1,26 @@
+# Build artifacts
+*.o
+*.obj
+*.exe
+*.out
+*.a
+*.so
+*.dylib
+
+# Clings runtime
+.clings/
+.clings-state.txt
+clings_score.json
+
+# OS junk
+.DS_Store
+Thumbs.db
+Desktop.ini
+._*
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/

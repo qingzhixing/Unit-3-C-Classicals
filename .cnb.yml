@@ -1,0 +1,76 @@
+# =============================================================================
+# CNB CI/CD + 云开发环境配置
+#
+# PR 流水线: 自动打分 → 上报 OpenCamp
+# 云开发环境: 点击"云原生开发"进入 WebIDE
+# =============================================================================
+
+# ===== PR 打分流水线 =====
+main:
+  pull_request:
+    - docker:
+        image: docker.cnb.cool/opencamp/learning-nccl/opencamp-c-env/ci:latest
+      stages:
+
+        - name: List
+          script: clings list unit3
+
+        - name: Run
+          allowFailure: true
+          script: clings run unit3
+
+        - name: Check
+          allowFailure: true
+          script: clings check unit3
+
+        - name: score
+          allowFailure: true
+          script: |
+            echo "=== Clings Auto-Grading ==="
+            clings -v
+            gcc --version | head -n1
+
+            clings score unit3
+
+            SCORE=$(jq -r '.test_summary.total_score' clings_score.json)
+            echo "##[set-output score=$SCORE]"
+            echo "Score: $SCORE"
+          exports:
+            score: SCORE
+
+        - name: send score to opencamp
+          image: docker.cnb.cool/opencamp/learning-docker/send-score-to-opencamp:latest
+          imports: https://cnb.cool/opencamp/learning-nccl/secret/-/blob/main/values.yml
+          settings:
+            COURSE_ID: 2046
+            SCORE: $SCORE
+            USER: $CNB_BUILD_USER
+            CHANNEL: cnb
+            TOKEN: $TOKENFOR2046
+
+# ===== 云原生开发环境 =====
+$:
+  vscode:
+    - docker:
+        image: docker.cnb.cool/opencamp/learning-nccl/opencamp-c-env/dev:latest
+      runner:
+        tags: cnb:arch:amd64
+      services:
+        - vscode
+        - docker
+      stages:
+        - name: setup
+          script: |
+            echo "=== C Classicals Development Environment ==="
+            gcc --version | head -n1
+            python3 --version
+            clings -v
+            echo ""
+            echo "📚 开始做题:"
+            echo "   clings           # 进入交互式 watch 模式"
+            echo "   clings list      # 查看练习列表"
+            echo "   clings hint      # 查看当前题目提示"
+            echo "   clings tests     # 查看测试用例"
+            echo "   clings score     # 查看当前得分"
+            echo ""
+            echo "✅ 环境就绪，开始编程吧！"
