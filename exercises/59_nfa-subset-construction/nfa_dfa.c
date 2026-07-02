@@ -5,7 +5,7 @@
  *       3. subset_construct() — 子集构造 (NFA→DFA)
  *       4. main()           — 主流程
  *
- * 固定 NFA: 识别语言 a*b | ab*
+ * 固定 NFA: 识别语言 a*b+ | ab*
  *   状态 0-3, 字母表{a,b}, 含ε转移
  *   ε: 0→1, 0→2
  *   a: 1→1, 2→3
@@ -81,6 +81,9 @@ static void subset_construct(void) {
 }
 
 int main(void) {
+    // 注意, 此处的 NFA 描述 准确的应该是  NFA: a*b+ | ab*
+    // 为了尽可能小的改动, 仅在此处添加注释说明
+    // 发现者微信ID 为:  粥哥  
     printf("=== NFA: a*b | ab* ===\n");
     printf("States: 0-3, Alphabet: {a,b}, Start: 0, Accept: 3\n");
     printf("Epsilon transitions: 0->1, 0->2\n");
