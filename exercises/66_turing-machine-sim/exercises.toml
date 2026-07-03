@@ -8,7 +8,7 @@ mode = "make+stdout"
 source = "turing_machine.c"
 binary = "turing_machine"
 make_targets = ["all"]
-lesson_url = "https://cnb.cool/q.qq/opencamp-c-2026-summer/Unit-3-C-Classicals/-/tree/main/exercises/66_turing-machine-sim"
+lesson_url = "https://cnb.cool/opencamp/learning-nccl/Unit-3-C-Panorama/-/tree/main/lessons/66_turing-machine-sim"
 hint = '''
 图灵机模拟器: 用 C 语言模拟图灵机识别语言 L = {aⁿbⁿ | n≥1}。
 
@@ -17,7 +17,7 @@ hint = '''
 ═══════════════════════════════════════
 
 图灵机是 Alan Turing 于 1936 年提出的抽象计算模型，
-用于精确定义"可计算性"(computability)的概念。
+用于精确定义"可计算性" (computability) 的概念。
 
 图灵机的组成部分:
   ┌──────────────────────────────────────────┐
@@ -33,7 +33,7 @@ hint = '''
   │         无限纸带 (Infinite Tape)           │
   └──────────────────────────────────────────┘
 
-与有限自动机(FA)的关键区别:
+与有限自动机 (FA) 的关键区别:
 - FA: 只读头, 单向移动, 无写入能力
 - TM: 可读可写, 双向移动, 无限纸带
 
@@ -161,7 +161,7 @@ TRANSITION 表已完整提供, 无需修改。
   Step 7: q1 读 Y→右移 q1   → [X X Y _ _], q1, head=3
   Step 8: q1 读_ → 无转移! → q_reject
 
-拒绝原因: a 的个数(2) > b 的个数(1), 第 2 轮找不到 b 来匹配。
+拒绝原因: a 的个数 (2) > b 的个数 (1), 第 2 轮找不到 b 来匹配。
 
 ═══════════════════════════════════════
 五个 TODO 任务
@@ -218,7 +218,7 @@ TODO 5 — main():
 Church-Turing 论题 (Church-Turing Thesis):
   "任何直观上可计算的函数都可以被图灵机计算。"
   这不是数学定理, 而是一个无法证明但被广泛接受的假说。
-  所有已知的计算模型 (λ演算, 递归函数, C 程序, Python...) 
+  所有已知的计算模型 (λ演算, 递归函数, C 程序, Python...)
   都与图灵机等价。
 
 停机问题 (Halting Problem):
@@ -244,7 +244,7 @@ Church-Turing 论题 (Church-Turing Thesis):
 ═══════════════════════════════════════
 Makefile
 ═══════════════════════════════════════
-填写 4 个变量(CC/CFLAGS/TARGET/SRC)+1 条编译命令。
+填写 4 个变量 (CC/CFLAGS/TARGET/SRC) +1 条编译命令。
 CC=gcc, CFLAGS=-Wall -std=c99, TARGET=turing_machine, SRC=turing_machine.c
 编译命令: $(CC) $(CFLAGS) -o $(TARGET) $(SRC)
 
@@ -258,7 +258,7 @@ CC=gcc, CFLAGS=-Wall -std=c99, TARGET=turing_machine, SRC=turing_machine.c
 - 判定接受: 状态==Q3 且 当前读头下的符号==BLANK('_')
 - q3 读 Y 时继续右移 (跳过所有 Y 找到末尾空白)
 - 不要忘记打印 "Input: \"...\"" 和 "Initial: " 行
-- 输出格式必须与 expected_output.txt 完全一致, 注意换行
+- 输出格式必须与期望输出完全一致 (clings tests 66 可查看), 注意换行
 - 仔细理解 aⁿbⁿ 的识别策略: 每次消去最左 a 和最左 b
 '''
 

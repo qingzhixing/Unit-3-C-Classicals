@@ -8,9 +8,9 @@ mode = "make+stdout"
 source = "cache_sim.c"
 binary = "cache_sim"
 make_targets = ["all"]
-lesson_url = "https://cnb.cool/q.qq/opencamp-c-2026-summer/Unit-3-C-Classicals/-/tree/main/exercises/57_cache-simulator-lru"
+lesson_url = "https://cnb.cool/opencamp/learning-nccl/Unit-3-C-Panorama/-/tree/main/lessons/57_cache-simulator-lru"
 hint = '''
-缓存模拟器 LRU 替换: 2 路组相联(2-way set-associative)缓存, 4 组, 总 8 行, 块大小 16B, 地址 8 位(0-255)。
+缓存模拟器 LRU 替换: 2 路组相联 (2-way set-associative) 缓存, 4 组, 总 8 行, 块大小 16B, 地址 8 位 (0-255)。
 
 ═══════════════════════════════════════
 背景: CPU 缓存原理
@@ -101,14 +101,14 @@ LRU (Least Recently Used) 替换策略
   容量缺失: 缓存总容量不足(本题不区分, 统一计入 miss/evict)
 
 ═══════════════════════════════════════
-Makefile (5 个变量 + 3 条命令)
+Makefile (4 个变量 + all/clean 规则)
 ═══════════════════════════════════════
-填写 CC/CFLAGS/TARGET/SRC/LDLIBS + all/test/clean 规则。
+填写 CC/CFLAGS/TARGET/SRC + all/clean 规则。
 CC = gcc, CFLAGS = -Wall -Wextra -std=c11
 TARGET = cache_sim, SRC = cache_sim.c
 $(TARGET) 规则: $(CC) $(CFLAGS) -o $(TARGET) $(SRC)
-test 规则: ./$(TARGET) | diff - expected_output.txt
 clean 规则: rm -f $(TARGET)
+判分/自测由 clings 完成: clings run 57 或 clings watch (自动比对标准输出), 看期望用 clings tests 57。
 
 ═══════════════════════════════════════
 C 代码 — 6 个 TODO 区 (~55 行)

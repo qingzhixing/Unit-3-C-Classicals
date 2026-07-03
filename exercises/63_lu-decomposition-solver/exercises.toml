@@ -8,7 +8,7 @@ mode = "make+stdout"
 source = "lu_solver.c"
 binary = "lu_solver"
 make_targets = ["all"]
-lesson_url = "https://cnb.cool/q.qq/opencamp-c-2026-summer/Unit-3-C-Classicals/-/tree/main/exercises/63_lu-decomposition-solver"
+lesson_url = "https://cnb.cool/opencamp/learning-nccl/Unit-3-C-Panorama/-/tree/main/lessons/63_lu-decomposition-solver"
 hint = '''
 矩阵 LU 分解求解器: 用带部分主元的 LU 分解求解 3×3 线性方程组 Ax = b 。
 
@@ -242,10 +242,11 @@ LU 分解的数据布局（ In-Place ）
 
 编译: make  (或 gcc -Wall -Wextra -std=c11 -o lu_solver lu_solver.c -lm)
 运行: ./lu_solver
-比对: ./lu_solver | diff - expected_output.txt
+比对: 判分由 clings 捕获程序 stdout 与内置用例逐行比对（clings tests 63 查看期望输出）
 '''
 
 [[exercises.cases]]
+trim_trailing_ws = true
 stdout = '''=== LU Decomposition Solver with Partial Pivoting ===
 
 Step 1: PA = LU decomposition
@@ -255,14 +256,14 @@ Step 1: PA = LU decomposition
 Permutation vector p: [2 0 1]
 
 L matrix:
-  1.0000   0.0000   0.0000 
-  0.2500   1.0000   0.0000 
-  0.5000   0.6667   1.0000 
+  1.0000   0.0000   0.0000
+  0.2500   1.0000   0.0000
+  0.5000   0.6667   1.0000
 
 U matrix:
-  8.0000   7.0000   9.0000 
-  0.0000  -0.7500  -1.2500 
-  0.0000   0.0000  -0.6667 
+  8.0000   7.0000   9.0000
+  0.0000  -0.7500  -1.2500
+  0.0000   0.0000  -0.6667
 
 Step 2: Forward substitution Ly = Pb
 y: [ 29.0000  -2.2500  -2.0000]

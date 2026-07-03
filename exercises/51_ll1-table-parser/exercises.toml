@@ -8,7 +8,7 @@ mode = "make+stdout"
 source = "ll1_parser.c"
 binary = "ll1_parser"
 make_targets = ["all"]
-lesson_url = "https://cnb.cool/q.qq/opencamp-c-2026-summer/Unit-3-C-Classicals/-/tree/main/exercises/51_ll1-table-parser"
+lesson_url = "https://cnb.cool/opencamp/learning-nccl/Unit-3-C-Panorama/-/tree/main/lessons/51_ll1-table-parser"
 hint = '''
 LL(1) 预测分析表构造与语法解析：用位掩码迭代计算 FIRST/FOLLOW 集，构建预测分析表，驱动自顶向下解析。
 
@@ -138,7 +138,7 @@ for 每个产生式 p:
 TODO 6 — print_sets(): 打印 FIRST/FOLLOW 集
 ═══════════════════════════════════════
 使用 set_str(mask, buf) 将位掩码转为字符串，然后 printf。
-注意 expected_output.txt 中的精确格式（大写、空格、空行）。
+注意 clings tests 51 展示的期望输出的精确格式（大写、空格、空行）。
 
 ═══════════════════════════════════════
 TODO 7 — LL(1) 解析主循环
@@ -169,7 +169,7 @@ TODO 7 — LL(1) 解析主循环
 • FOLLOW 迭代中，β 全可空时要把 FOLLOW(A) 复制到 FOLLOW(B)
 • E' 和 T' 是可空的，其他非终结符不可空
 • 构建表时先全填 -1，再按规则填充
-• 打印格式必须与 expected_output.txt 精确一致（注意空格对齐）
+• 打印格式必须与 clings tests 51 展示的期望输出精确一致（注意空格对齐）
 '''
 
 [[exercises.cases]]
