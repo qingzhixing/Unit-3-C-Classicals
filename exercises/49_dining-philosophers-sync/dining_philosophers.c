@@ -125,8 +125,8 @@ static void pickup(int id) {
             break;
         }
         case ORDERED: {
-            first = min(left, right);
-            second = max(left, right);
+            first = left < right ? left : right;
+            second = left > right ? left : right;
             break;
         }
     }
@@ -176,8 +176,8 @@ static void putdown(int id) {
             break;
         }
         case ORDERED: {
-            first = min(left, right);
-            second = max(left, right);
+            first = left < right ? left : right;
+            second = left > right ? left : right;
             break;
         }
     }
@@ -271,7 +271,30 @@ static void print_deadlock_diag(void);
 
 static void *watchdog(void *arg) {
     (void)arg;
-#error TODO: implement watchdog() timeout detector.
+
+    const int check_us = 200000;  // 200ms 采样
+    // 无进展次数上限
+    const int stall_limit = WATCHDOG_TIMEOUT * 1000000 / check_us;
+    int last_total = -1, stall = 0;
+
+    for (;;) {
+        usleep(check_us);
+
+        if (atomic_load(&all_done_flag)) return NULL;  // 正常完成
+
+        int total = 0;
+
+        for (int i = 0; i < N; i++) total += atomic_load(&eat_count[i]);
+
+        if (total != last_total) {
+            last_total = total;
+            stall = 0;
+        }  // 有进展→重置
+        else if (++stall >= stall_limit) {  // 持续无进展→死锁
+            print_deadlock_diag();
+            exit(2);
+        }
+    }
     return NULL;
 }
 
@@ -285,9 +308,31 @@ static void *watchdog(void *arg) {
  * 这是"循环等待"（Coffman 条件 4）的可视化。
  */
 static void build_wait_cycle(char *out, size_t outsz) {
-#error TODO: implement build_wait_cycle().
     (void)out;
     (void)outsz;
+
+    char *ptr = out;
+    size_t remaining = outsz;
+    int len;
+
+    for (int i = 0; i < N; i++) {
+        if (i == 0) {
+            len = snprintf(ptr, remaining, "P%d → chop%d", i, (i + 1) % N);
+        } else {
+            len = snprintf(ptr, remaining, " → P%d → chop%d", i, (i + 1) % N);
+        }
+
+        // 分配失败或者分配过头
+        if (len < 0 || (size_t)len >= remaining) {
+            break;
+        }
+
+        ptr += len;
+        remaining -= len;
+    }
+
+    // 闭环
+    snprintf(ptr, remaining, " → P0");
 }
 
 /* ---------- TODO 6: coffman_check() — 自检四条件 ----------
