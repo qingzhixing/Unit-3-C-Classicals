@@ -30,6 +30,7 @@
 #define _POSIX_C_SOURCE 200809L
 #define _DEFAULT_SOURCE
 
+#include <math.h>
 #include <pthread.h>
 #include <stdatomic.h>
 #include <stdint.h>
@@ -38,13 +39,13 @@
 #include <string.h>
 #include <unistd.h>
 
-#define N 5                  /* 哲学家数量 */
-#define TARGET_EAT 100       /* 每人目标进餐次数（naive 下足够稳定触发死锁） */
-#define WATCHDOG_TIMEOUT 3   /* watchdog 超时秒数 */
-#define THINK_US_MIN 1000    /* 思考最短（微秒） */
-#define THINK_US_MAX 3000    /* 思考最长（微秒） */
-#define EAT_US 1000          /* 进餐持续（微秒） */
-#define GRAB_GAP_US 500      /* 拿左筷到拿右筷的间隔（放大持有并等待窗口） */
+#define N 5                /* 哲学家数量 */
+#define TARGET_EAT 100     /* 每人目标进餐次数（naive 下足够稳定触发死锁） */
+#define WATCHDOG_TIMEOUT 3 /* watchdog 超时秒数 */
+#define THINK_US_MIN 1000  /* 思考最短（微秒） */
+#define THINK_US_MAX 3000  /* 思考最长（微秒） */
+#define EAT_US 1000        /* 进餐持续（微秒） */
+#define GRAB_GAP_US 500    /* 拿左筷到拿右筷的间隔（放大持有并等待窗口） */
 
 typedef enum { NAIVE, ASYMMETRIC, ORDERED } Strategy;
 
@@ -62,8 +63,8 @@ static pthread_barrier_t start_gate;
 static atomic_int eat_count[N];
 
 /* 哲学家状态（仅供诊断输出，不参与同步逻辑） */
-static atomic_int state[N];      /* 0=THINKING 1=HUNGRY 2=EATING */
-static atomic_int holding[N];    /* 当前持有的左筷编号，-1 表示无 */
+static atomic_int state[N];   /* 0=THINKING 1=HUNGRY 2=EATING */
+static atomic_int holding[N]; /* 当前持有的左筷编号，-1 表示无 */
 
 /* 全局策略（main 解析后写入，线程启动前固定，无需同步） */
 static Strategy g_strategy;
@@ -107,7 +108,34 @@ static void pickup(int id) {
      *   pthread_mutex_lock(&chopstick[second]);
      *   atomic_store(&state[id], 2);    // EATING
      */
-#error TODO: implement pickup() per strategy.
+    switch (g_strategy) {
+        case NAIVE: {
+            first = left;
+            second = right;
+            break;
+        }
+        case ASYMMETRIC: {
+            if (id == N - 1) {
+                first = right;
+                second = left;
+            } else {
+                first = left;
+                second = right;
+            }
+            break;
+        }
+        case ORDERED: {
+            first = min(left, right);
+            second = max(left, right);
+            break;
+        }
+    }
+
+    pthread_mutex_lock(&chopstick[first]);
+    atomic_store(&holding[id], first);
+    usleep(GRAB_GAP_US);  // 放大持有并等待窗口
+    pthread_mutex_lock(&chopstick[second]);
+    atomic_store(&state[id], 2);  // EATING
 }
 
 /* ---------- TODO 2: putdown() — 释放两根筷子 ----------
@@ -120,7 +148,45 @@ static void pickup(int id) {
  *       holding[id] 置 -1 表示无持有。
  */
 static void putdown(int id) {
-#error TODO: implement putdown(). Release both chopsticks, clear holding[id].
+    int left = id;
+    int right = (id + 1) % N;
+    int first, second;
+
+    /* TODO: 根据 g_strategy 计算 first / second 的拿筷顺序，然后:
+     *   pthread_mutex_lock(&chopstick[first]);
+     *   atomic_store(&holding[id], first);
+     *   usleep(GRAB_GAP_US);            // 放大持有并等待窗口
+     *   pthread_mutex_lock(&chopstick[second]);
+     *   atomic_store(&state[id], 2);    // EATING
+     */
+    switch (g_strategy) {
+        case NAIVE: {
+            first = left;
+            second = right;
+            break;
+        }
+        case ASYMMETRIC: {
+            if (id == N - 1) {
+                first = right;
+                second = left;
+            } else {
+                first = left;
+                second = right;
+            }
+            break;
+        }
+        case ORDERED: {
+            first = min(left, right);
+            second = max(left, right);
+            break;
+        }
+    }
+
+    // 逆序释放：先释放后拿的，再释放先拿的
+    pthread_mutex_unlock(&chopstick[second]);
+    pthread_mutex_unlock(&chopstick[first]);
+    atomic_store(&holding[id], -1);
+    atomic_store(&state[id], 0);
 }
 
 /* ---------- TODO 3: philosopher() — 线程函数 ----------
@@ -140,7 +206,33 @@ static void putdown(int id) {
  * 提示：用 rand_r(&seed) 生成可复现的思考时长，seed 用 id 派生。
  */
 static void *philosopher(void *arg) {
-#error TODO: implement philosopher() thread loop.
+    int id = *(int *)arg;
+    free(arg);
+
+    int seed = id + 1;
+
+    // 同时起跑
+    pthread_barrier_wait(&start_gate);
+
+    for (int i = 0; i < TARGET_EAT; i++) {
+        // think
+        usleep(rand_r(&seed) % (THINK_US_MAX - THINK_US_MIN + 1) + THINK_US_MIN);
+
+        // hungry
+        atomic_store(&state[id], 1);
+
+        // pickup
+        pickup(id);
+
+        // eat
+        usleep(EAT_US);
+
+        // putdown
+        putdown(id);
+
+        // finish
+        atomic_fetch_add(&eat_count[id], 1);
+    }
     return NULL;
 }
 
@@ -194,7 +286,8 @@ static void *watchdog(void *arg) {
  */
 static void build_wait_cycle(char *out, size_t outsz) {
 #error TODO: implement build_wait_cycle().
-    (void)out; (void)outsz;
+    (void)out;
+    (void)outsz;
 }
 
 /* ---------- TODO 6: coffman_check() — 自检四条件 ----------
@@ -212,7 +305,8 @@ static void build_wait_cycle(char *out, size_t outsz) {
  */
 static void coffman_check(char *out, size_t outsz) {
 #error TODO: implement coffman_check().
-    (void)out; (void)outsz;
+    (void)out;
+    (void)outsz;
 }
 
 /* ---------- 死锁诊断输出（已实现，调用上面的 TODO） ---------- */
@@ -258,6 +352,7 @@ static void print_deadlock_diag(void) {
  */
 int main(int argc, char **argv) {
 #error TODO: implement main() thread orchestration.
-    (void)argc; (void)argv;
+    (void)argc;
+    (void)argv;
     return 0;
 }
