@@ -1,19 +1,16 @@
 # Makefile for 55_rsa-crypto-demo
-#
-# TODO: Fill in all fields marked with ??? and implement the build rules.
-#       完成后删除本 TODO 行。
 
-CC      = ???
-CFLAGS  = ???
-TARGET  = ???
-SRC     = ???
+CC      = gcc
+CFLAGS  = -O0 -Wall
+TARGET  = rsa_crypto
+SRC     = rsa_crypto.c
 
 all: $(TARGET)
 
 $(TARGET): $(SRC)
-	???
+	$(CC) $(CFLAGS) -o $(TARGET) $(SRC)
 
 clean:
-	???
+	rm -f $(TARGET)
 
 .PHONY: all  clean

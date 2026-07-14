@@ -40,7 +40,12 @@ static const uint64_t m = 42;     /* 明文消息 */
 
 /* ─── TODO 1: 最大公约数 (欧几里得算法) ─── */
 static uint64_t gcd(uint64_t a, uint64_t b) {
-#error TODO: Finish this exercise. Run "clings hint" for help.
+    while (b != 0) {
+        uint64_t t = b;
+        b = a % b;
+        a = t;
+    }
+    return a;
 }
 
 /* ─── TODO 2: 扩展欧几里得算法 ───
@@ -54,7 +59,16 @@ static uint64_t gcd(uint64_t a, uint64_t b) {
  *       然后 *px = y1, *py = x1 - (a/b)*y1。
  */
 static int64_t ext_gcd(int64_t a, int64_t b, int64_t *px, int64_t *py) {
-#error TODO: Finish this exercise. Run "clings hint" for help.
+    if (b == 0) {
+        *px = 1;
+        *py = 0;
+        return a;
+    }
+    int64_t x1, y1;
+    int64_t d = ext_gcd(b, a % b, &x1, &y1);
+    *px = y1;
+    *py = x1 - (a / b) * y1;
+    return d;
 }
 
 /* ─── TODO 3: 快速模幂运算 ───
@@ -67,7 +81,16 @@ static int64_t ext_gcd(int64_t a, int64_t b, int64_t *px, int64_t *py) {
  *                        exp >>= 1; base = (base*base)%mod
  */
 static uint64_t fast_pow(uint64_t base, uint64_t exp, uint64_t mod) {
-#error TODO: Finish this exercise. Run "clings hint" for help.
+    uint64_t result = 1;
+    base = base % mod;
+    while (exp > 0) {
+        if (exp & 1) {
+            result = result * base % mod;
+        }
+        exp >>= 1;
+        base = base * base % mod;
+    }
+    return result;
 }
 
 /* ─── TODO 4: Miller-Rabin 素性判定 ───
@@ -90,7 +113,37 @@ static uint64_t fast_pow(uint64_t base, uint64_t exp, uint64_t mod) {
  * 提示：分解 n-1 的 2 的幂时使用 while ((d & 1) == 0) { d >>= 1; s++; }
  */
 static int is_prime(uint64_t num) {
-#error TODO: Finish this exercise. Run "clings hint" for help.
+    if (num < 2) return 0;
+    if (num == 2 || num == 3) return 1;
+    if ((num & 1) == 0) return 0;
+
+    uint64_t d = num - 1;
+    int s = 0;
+    while ((d & 1) == 0) {
+        d >>= 1;
+        s++;
+    }
+
+    uint64_t bases[] = {2, 3, 5, 7, 11};
+    for (int i = 0; i < 5; i++) {
+        uint64_t a = bases[i];
+        if (a % num == 0) continue;  // 基数为 num 的倍数时无意义，跳过
+
+        uint64_t x = fast_pow(a % num, d, num);
+        if (x == 1 || x == num - 1) continue;
+
+        int cont = 0;
+        for (int r = 1; r < s; r++) {
+            x = fast_pow(x, 2, num);  // 等价于 x = x² mod num
+            if (x == num - 1) {
+                cont = 1;
+                break;
+            }
+        }
+        if (cont) continue;
+        return 0;  // 合数
+    }
+    return 1;  // 素数
 }
 
 /* ─── TODO 5: 密钥生成 ───
@@ -111,17 +164,49 @@ static int is_prime(uint64_t num) {
  */
 static int gen_keys(uint64_t prime_p, uint64_t prime_q, uint64_t pub_e, uint64_t *out_n, uint64_t *out_phi,
                     int64_t *out_d) {
-#error TODO: Finish this exercise. Run "clings hint" for help.
+    uint64_t n = prime_p * prime_q;
+    uint64_t phi = (prime_p - 1) * (prime_q - 1);
+
+    /* 验证 e 与 φ(n) 互质 */
+    uint64_t g = gcd(pub_e, phi);
+    if (g != 1) {
+        printf("Error: gcd(e, phi) != 1\n");
+        return 1;
+    }
+
+    /* 扩展欧几里得求 e 的模逆元 */
+    int64_t x, y;
+    int64_t g_ext = ext_gcd((int64_t)pub_e, (int64_t)phi, &x, &y);
+    int64_t d = x % (int64_t)phi;
+    if (d < 0) d += (int64_t)phi;  // 确保 d 为正
+
+    printf("  n = p*q = %" PRIu64 "*%" PRIu64 " = %" PRIu64 "\n", prime_p, prime_q, n);
+    printf("  φ(n) = (p-1)*(q-1) = %" PRIu64 "*%" PRIu64 " = %" PRIu64 "\n", prime_p - 1, prime_q - 1, phi);
+    printf("  Select e = %" PRIu64 " (public exponent)\n", pub_e);
+    printf("  Verify gcd(e, φ) = gcd(%" PRIu64 ", %" PRIu64 ") = %" PRIu64 "\n", pub_e, phi, g);
+    printf("  [OK — e and φ are coprime]\n");
+    printf("  ext_gcd(e=%" PRId64 ", φ=%" PRId64 ") → gcd=%" PRId64 ", x=%" PRId64 ", y=%" PRId64 "\n", (int64_t)pub_e,
+           (int64_t)phi, g_ext, x, y);
+    printf("  Equation: e*x + φ*y = gcd  →  %" PRId64 "*%" PRId64 " + %" PRId64 "*%" PRId64 " = %" PRId64 "\n",
+           (int64_t)pub_e, x, (int64_t)phi, y, g_ext);
+    printf("  Private key d = x mod φ = %" PRId64 "\n", d);
+
+    uint64_t check = (uint64_t)((pub_e * (uint64_t)d) % phi);
+    printf("  Verify: e*d mod φ = %" PRIu64 " %s\n", check, (check == 1) ? "[OK]" : "[FAIL]");
+
+    /* 传出结果 */
+    *out_n = n;
+    *out_phi = phi;
+    *out_d = d;
+    return 0;
 }
 
 /* ─── TODO 6: RSA 加密 ─── */
-static uint64_t encrypt(uint64_t msg, uint64_t pub_exp, uint64_t modulus) {
-#error TODO: Finish this exercise. Run "clings hint" for help.
-}
+static uint64_t encrypt(uint64_t msg, uint64_t pub_exp, uint64_t modulus) { return fast_pow(msg, pub_exp, modulus); }
 
 /* ─── TODO 7: RSA 解密 ─── */
 static uint64_t decrypt(uint64_t cipher, uint64_t priv_exp, uint64_t modulus) {
-#error TODO: Finish this exercise. Run "clings hint" for help.
+    return fast_pow(cipher, priv_exp, modulus);
 }
 
 /* ─── TODO 8: 主流程 ───
@@ -137,5 +222,54 @@ static uint64_t decrypt(uint64_t cipher, uint64_t priv_exp, uint64_t modulus) {
  * is_prime 返回值：1=素数，0=合数，打印 "prime ✓" 或 "composite ✗"。
  */
 int main(void) {
-#error TODO: Finish this exercise. Run "clings hint" for help.
+    /* ─── 标题 ─── */
+    printf("=== RSA Public-Key Crypto Demo (uint64 toy version) ===\n\n");
+
+    /* ─── Step 1 ─── */
+    printf("Step 1 — RSA Parameter Setup & Primality Verification:\n");
+    printf("  Prime p = %" PRIu64 " — Miller-Rabin: %s\n", p, is_prime(p) ? "prime ✓" : "composite ✗");
+    printf("  Prime q = %" PRIu64 " — Miller-Rabin: %s\n", q, is_prime(q) ? "prime ✓" : "composite ✗");
+    printf("  Modulus n = p*q = %" PRIu64 "\n", n);
+    printf("  Euler φ(n) = (p-1)*(q-1) = %" PRIu64 "\n", phi);
+    printf("  Public exponent e = %" PRIu64 "\n", e);
+    printf("  Plaintext message m = %" PRIu64 "\n", m);
+    printf("\n");
+
+    /* ─── Step 2 ─── */
+    printf("Step 2 — Key Generation:\n");
+    uint64_t out_n, out_phi;
+    int64_t out_d;
+    if (gen_keys(p, q, e, &out_n, &out_phi, &out_d) != 0) {
+        printf("Key generation failed.\n");
+        return 1;
+    }
+    printf("\n");
+
+    /* ─── Step 3 ─── */
+    printf("Step 3 — Encryption (c = m^e mod n):\n");
+    uint64_t c = encrypt(m, e, out_n);
+    printf("  c = %" PRIu64 "^%" PRIu64 " mod %" PRIu64 "\n", m, e, out_n);
+    printf("    = fast_pow(%" PRIu64 ", %" PRIu64 ", %" PRIu64 ")\n", m, e, out_n);
+    printf("    = %" PRIu64 "\n", c);
+    printf("\n");
+
+    /* ─── Step 4 ─── */
+    printf("Step 4 — Decryption (m' = c^d mod n):\n");
+    uint64_t m_prime = decrypt(c, out_d, out_n);
+    printf("  m' = %" PRIu64 "^%" PRId64 " mod %" PRIu64 "\n", c, out_d, out_n);
+    printf("     = fast_pow(%" PRIu64 ", %" PRId64 ", %" PRIu64 ")\n", c, out_d, out_n);
+    printf("     = %" PRIu64 "\n", m_prime);
+    printf("\n");
+
+    /* ─── Step 5 ─── */
+    printf("Step 5 — Verification:\n");
+    printf("  Original message  m  = %" PRIu64 "\n", m);
+    printf("  Decrypted message m' = %" PRIu64 "\n", m_prime);
+    if (m_prime == m) {
+        printf("  m' == m  →  RSA works! ✓\n");
+    } else {
+        printf("  m' != m  →  RSA failed.\n");
+    }
+
+    return 0;
 }
