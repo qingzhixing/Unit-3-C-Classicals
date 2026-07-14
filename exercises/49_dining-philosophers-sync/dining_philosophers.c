@@ -349,9 +349,61 @@ static void build_wait_cycle(char *out, size_t outsz) {
  *   4. 循环等待   — build_wait_cycle() 构造出的环
  */
 static void coffman_check(char *out, size_t outsz) {
-#error TODO: implement coffman_check().
     (void)out;
     (void)outsz;
+    int mutual_exclusion = 1;
+    int hold_and_wait = 1;
+    int no_preemption = 1;  // 由 mutex 机制保证
+    int circular_wait = 1;
+
+    // 互斥
+    int hold_count[N] = {0};
+    for (int i = 0; i < N; i++) {
+        int h = atomic_load(&holding[i]);
+        if (h != -1) {
+            hold_count[h]++;
+        }
+    }
+    for (int i = 0; i < N; i++) {
+        // 被多个哲学家持有或未持有筷子
+        if (hold_count[i] > 1 || hold_count[i] == 0) {
+            mutual_exclusion = 0;
+            break;
+        }
+    }
+
+    // 持有并等待
+    for (int i = 0; i < N; i++) {
+        int h = atomic_load(&holding[i]);
+        int s = atomic_load(&state[i]);
+        if (!(h != -1 && s == 1)) {
+            hold_and_wait = 0;
+            break;
+        }
+    }
+
+    /* 4. 检查循环等待：检查是否对于所有 i，哲学家 i 等待的筷子 (i+1)%N
+     *    正好被哲学家 (i+1) 持有（即 holding[(i+1)%N] == (i+1)%N 且
+     *    哲学家 i 的 holding[i] == i，形成环）。
+     *    更通用的检查：构建等待图，但此处按死锁现场简化。
+     */
+    for (int i = 0; i < N; i++) {
+        int h_i = atomic_load(&holding[i]);
+        int h_next = atomic_load(&holding[(i + 1) % N]);
+        /* 哲学家 i 等待的筷子是 (i+1)%N，若该筷子被 (i+1) 持有，
+         * 且 (i+1) 持有的就是 (i+1)（即 holding[(i+1)] == (i+1)），
+         * 则形成环。但要注意 asymmetric 可能打破，但死锁时该环必然存在。
+         * 我们直接检查：每个哲学家 i 持有的筷子是否就是 i，且等待的筷子
+         * (i+1) 被 (i+1) 持有。
+         */
+        if (!(h_i == i && h_next == (i + 1) % N)) {
+            circular_wait = 0;
+            break;
+        }
+    }
+
+    snprintf(out, outsz, "Coffman check: 互斥%s 持有等待%s 不可剥夺✓ 循环等待%s", mutual_exclusion ? "✓" : "✗",
+             hold_and_wait ? "✓" : "✗", circular_wait ? "✓" : "✗");
 }
 
 /* ---------- 死锁诊断输出（已实现，调用上面的 TODO） ---------- */
@@ -396,8 +448,80 @@ static void print_deadlock_diag(void) {
  * 提示：watchdog 用 detached 创建，避免 main 退出时 join 它（它会先 exit(2)）。
  */
 int main(int argc, char **argv) {
-#error TODO: implement main() thread orchestration.
     (void)argc;
     (void)argv;
+
+    /* 1. 解析策略 */
+    if (argc > 1) {
+        if (strcmp(argv[1], "naive") == 0)
+            g_strategy = NAIVE;
+        else if (strcmp(argv[1], "asymmetric") == 0)
+            g_strategy = ASYMMETRIC;
+        else if (strcmp(argv[1], "ordered") == 0)
+            g_strategy = ORDERED;
+        else {
+            fprintf(stderr, "Unknown strategy: %s\n", argv[1]);
+            return 1;
+        }
+    } else {
+        g_strategy = NAIVE;
+    }
+
+    printf("Philosophers strategy=%s\n", strategy_name(g_strategy));
+    fflush(stdout);
+
+    /* 2. 初始化互斥锁 */
+    for (int i = 0; i < N; i++) {
+        pthread_mutex_init(&chopstick[i], NULL);
+    }
+
+    /* 3. 初始化屏障 */
+    pthread_barrier_init(&start_gate, NULL, N);
+
+    /* 4. 初始化全局数组 */
+    for (int i = 0; i < N; i++) {
+        atomic_store(&eat_count[i], 0);
+        atomic_store(&state[i], 0);
+        atomic_store(&holding[i], -1);
+    }
+
+    /* 5. 创建 watchdog（分离） */
+    pthread_t watchdog_tid;
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    pthread_create(&watchdog_tid, &attr, watchdog, NULL);
+    pthread_attr_destroy(&attr);
+
+    /* 6. 创建哲学家线程 */
+    pthread_t phil[N];
+    for (int i = 0; i < N; i++) {
+        int *id = malloc(sizeof(int));
+        *id = i;
+        pthread_create(&phil[i], NULL, philosopher, id);
+    }
+
+    /* 7. 等待所有哲学家完成 */
+    for (int i = 0; i < N; i++) {
+        pthread_join(phil[i], NULL);
+    }
+
+    /* 8. 通知 watchdog 正常结束 */
+    atomic_store(&all_done_flag, 1);
+
+    /* 9. 打印最终统计 */
+    printf("\nFinal Stats:\n");
+    for (int i = 0; i < N; i++) {
+        printf("P%d ate %d times\n", i, atomic_load(&eat_count[i]));
+    }
+    printf("all philosophers finished\n");
+    fflush(stdout);
+
+    /* 10. 销毁资源 */
+    for (int i = 0; i < N; i++) {
+        pthread_mutex_destroy(&chopstick[i]);
+    }
+    pthread_barrier_destroy(&start_gate);
+
     return 0;
 }
