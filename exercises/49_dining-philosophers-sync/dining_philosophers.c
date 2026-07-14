@@ -211,12 +211,12 @@ static void *philosopher(void *arg) {
 
     int seed = id + 1;
 
-    // 同时起跑
-    pthread_barrier_wait(&start_gate);
-
     for (int i = 0; i < TARGET_EAT; i++) {
         // think
         usleep(rand_r(&seed) % (THINK_US_MAX - THINK_US_MIN + 1) + THINK_US_MIN);
+
+        // 同时起跑
+        pthread_barrier_wait(&start_gate);
 
         // hungry
         atomic_store(&state[id], 1);
