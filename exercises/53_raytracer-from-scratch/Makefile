@@ -1,20 +1,17 @@
 # Makefile for 53_raytracer-from-scratch
-#
-# TODO: Fill in all fields marked with ??? and implement the build rules.
-#       完成后删除本 TODO 行。
 
-CC      = ???
-CFLAGS  = ???
-TARGET  = ???
-SRC     = ???
-LDLIBS  = ???
+CC      = gcc
+CFLAGS  = -O0
+TARGET  = raytracer
+SRC     = raytracer.c
+LDLIBS  = -lm
 
 all: $(TARGET)
 
 $(TARGET): $(SRC)
-	???
+	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
 clean:
-	???
+	rm -f $(TARGET)
 
 .PHONY: all  clean

@@ -36,7 +36,6 @@ Vec3 v3(double x, double y, double z) {
     return v;
 }
 
-#error TODO: Finish this exercise. Run "clings hint" for help.
 /* TODO 1a: 基本向量运算 — 加减、标量乘除 (约 8 行)
  *
  * Vec3 v3_add(Vec3 a, Vec3 b)  — 返回分量和：{a.x+b.x, a.y+b.y, a.z+b.z}
@@ -46,8 +45,14 @@ Vec3 v3(double x, double y, double z) {
  *
  * 提示：用 v3() 构造返回向量。
  */
+Vec3 v3_add(Vec3 a, Vec3 b) { return v3(a.x + b.x, a.y + b.y, a.z + b.z); }
 
-#error TODO: Finish this exercise. Run "clings hint" for help.
+Vec3 v3_sub(Vec3 a, Vec3 b) { return v3(a.x - b.x, a.y - b.y, a.z - b.z); }
+
+Vec3 v3_mul(Vec3 a, double s) { return v3(a.x * s, a.y * s, a.z * s); }
+
+Vec3 v3_div(Vec3 a, double s) { return v3(a.x / s, a.y / s, a.z / s); }
+
 /* TODO 1b: 向量点积、长度、归一化 (约 7 行)
  *
  * double v3_dot(Vec3 a, Vec3 b) — 点积：a.x*b.x + a.y*b.y + a.z*b.z
@@ -56,6 +61,18 @@ Vec3 v3(double x, double y, double z) {
  *
  * 注意：v3_len 需要 #include <math.h> (已在顶部), 编译时需要 -lm
  */
+double v3_dot(Vec3 a, Vec3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+
+double v3_len(Vec3 v) { return sqrt(v3_dot(v, v)); }
+
+Vec3 v3_norm(Vec3 v) {
+    double len = v3_len(v);
+    if (len > 0.0) {
+        return v3_div(v, len);
+    } else {
+        return v3(0.0, 0.0, 0.0);
+    }
+}
 
 /* ─── 光线 Ray ─── */
 typedef struct {
@@ -82,7 +99,6 @@ typedef struct {
 #define WIDTH 64
 #define HEIGHT 32
 
-#error TODO: Finish this exercise. Run "clings hint" for help.
 /* TODO 2: 光线 - 球体求交 (约 15 行)
  *
  * double hit_sphere(Ray r, Sphere s):
@@ -98,6 +114,25 @@ typedef struct {
  *            t1 = (-b + sqrt(disc)) / (2a)
  *   返回两个正根中较小者; 若都 ≤0 则返回 -1.0
  */
+
+double hit_sphere(Ray r, Sphere s) {
+    Vec3 oc = v3_sub(r.orig, s.center);
+    double a = v3_dot(r.dir, r.dir);
+    double b = 2.0 * v3_dot(oc, r.dir);
+    double c = v3_dot(oc, oc) - s.radius * s.radius;
+    double disc = b * b - 4 * a * c;
+
+    if (disc < 0) return -1;
+
+    double sqrt_disc = sqrt(disc);
+    double t0 = (-b - sqrt_disc) / (2 * a);
+    double t1 = (-b + sqrt_disc) / (2 * a);
+
+    if (t0 > 0 && t1 > 0) return (t0 < t1) ? t0 : t1;
+    if (t0 > 0) return t0;
+    if (t1 > 0) return t1;
+    return -1;
+}
 
 /* 将 [0,1] 浮点数转为 0-255 整数 (含 clamp) */
 static int to_byte(double x) {
@@ -126,7 +161,6 @@ int main(void) {
     /* 输出 PPM P3 头 */
     printf("P3\n%d %d\n255\n", WIDTH, HEIGHT);
 
-#error TODO: Finish this exercise. Run "clings hint" for help.
     /* TODO 3a: 主循环 — 生成光线并找最近交点 (约 12 行)
      *
      * for (int y = 0; y < HEIGHT; y++):
@@ -148,7 +182,6 @@ int main(void) {
      *           closest_t = t; hit_idx = i;
      */
 
-#error TODO: Finish this exercise. Run "clings hint" for help.
     /* TODO 3b: Phong 光照计算与像素输出 (约 13 行)
      *
      *     ③ 若无交点 (hit_idx < 0):
@@ -179,6 +212,59 @@ int main(void) {
      *
      *     ⑤ 输出：printf("%d %d %d\\n", to_byte(color.x), to_byte(color.y), to_byte(color.z));
      */
+
+    for (int y = 0; y < HEIGHT; y++) {
+        for (int x = 0; x < WIDTH; x++) {
+            /* ① 生成光线 */
+            double u = (x + 0.5) / WIDTH;
+            double v = (y + 0.5) / HEIGHT;
+            double px = (u - 0.5) * viewport_w;
+            double py = (0.5 - v) * viewport_h;
+            double pz = -focal;
+            Vec3 dir = v3_norm(v3(px, py, pz));
+            Ray ray = {cam, dir};
+
+            /* ② 找最近交点 */
+            double closest_t = -1.0;
+            int hit_idx = -1;
+            for (int i = 0; i < n_spheres; i++) {
+                double t = hit_sphere(ray, spheres[i]);
+                if (t > 0 && (closest_t < 0 || t < closest_t)) {
+                    closest_t = t;
+                    hit_idx = i;
+                }
+            }
+
+            /* ③ Phong 光照计算 */
+            Vec3 color;
+            if (hit_idx < 0) {
+                color = v3(0, 0, 0);
+            } else {
+                Vec3 P = ray_at(ray, closest_t);
+                Vec3 N = v3_norm(v3_sub(P, spheres[hit_idx].center));
+                Vec3 obj = spheres[hit_idx].color;
+                Vec3 L = v3_norm(v3_sub(light.pos, P));
+                Vec3 V = v3_norm(v3_sub(cam, P));
+
+                // Ambient
+                Vec3 ambient = v3_mul(obj, 0.1);
+
+                // Diffuse
+                double ndotl = v3_dot(N, L);
+                Vec3 diffuse = (ndotl > 0) ? v3_mul(obj, 0.7 * ndotl) : v3(0, 0, 0);
+
+                // Specular
+                Vec3 R = v3_sub(v3_mul(N, 2.0 * ndotl), L);
+                double rdotv = v3_dot(R, V);
+                Vec3 specular = (rdotv > 0 && ndotl > 0) ? v3_mul(light.color, 0.5 * pow(rdotv, 32.0)) : v3(0, 0, 0);
+
+                color = v3_add(v3_add(ambient, diffuse), specular);
+            }
+
+            /* ④ 输出像素 */
+            printf("%d %d %d\n", to_byte(color.x), to_byte(color.y), to_byte(color.z));
+        }
+    }
 
     return 0;
 }
