@@ -128,7 +128,10 @@ static int sym_to_idx(char c) {
  * The head starts at position 0.
  * No return value — just fill the tape[] array. */
 static void init_tape(char tape[], int tape_size, const char *input) {
-#error TODO 1: Initialize tape — fill entire tape with BLANK, then copy each char of input. Use strlen() to get input length.
+    memset(tape, BLANK, tape_size);
+    int input_len = strlen(input);
+    memcpy(tape, input, input_len);
+    tape[input_len] = BLANK;
 }
 
 /* ─── TODO 2: print_tape ───
@@ -137,7 +140,22 @@ static void init_tape(char tape[], int tape_size, const char *input) {
  * Print only up to rightmost non-blank + 2 extra blanks.
  * Use printf for each symbol separated by space. */
 static void print_tape(const char tape[], int tape_size, int head, int state) {
-#error TODO 2: Print tape — find rightmost non-blank index, then print from 0 to rightmost+2. Use printf for symbols with space separator, then print head and state.
+    // TODO 2: Print tape — find rightmost non-blank index,
+    // then print from 0 to rightmost+2. Use printf for symbols with space separator,
+    // then print head and state.
+    int rightmost = head;
+    while (rightmost < tape_size && tape[rightmost] != BLANK) {
+        rightmost++;
+    }
+
+    rightmost = (rightmost + 1) % tape_size;
+
+    printf("Tape: [");
+    for (int i = 0; i <= rightmost; i++) {
+        if (i > 0) printf(" ");
+        printf("%c", tape[i]);
+    }
+    printf("], head=%d, state=%s\n", head, STATE_NAMES[state]);
 }
 
 /* ─── TODO 3: step ───
@@ -148,7 +166,17 @@ static void print_tape(const char tape[], int tape_size, int head, int state) {
  *   by adding t.move, clamp head to [0, tape_size-1],
  *   and return the new state. */
 static int step(char tape[], int tape_size, int *head, int state) {
-#error TODO 3: Step — get symbol index via sym_to_idx(tape[*head]), look up TRANSITION[state][si], if next_state is -1 return Q_REJECT, else write symbol, move head (clamp), return next_state.
+    // TODO 3: Step — get symbol index via sym_to_idx(tape[*head]),
+    // look up TRANSITION[state][si], if next_state is -1 return Q_REJECT,
+    // else write symbol, move head (clamp), return next_state.
+    Transition t = TRANSITION[state][sym_to_idx(tape[*head])];
+    if (t.next_state == -1) {
+        return Q_REJECT;
+    }
+    tape[*head] = t.write_symbol;
+    *head += t.move;
+    *head = (*head + tape_size) % tape_size;
+    return t.next_state;
 }
 
 /* ─── TODO 4: run ───
@@ -165,7 +193,47 @@ static int step(char tape[], int tape_size, int *head, int state) {
  *      f. If state == Q3 AND tape[head] == BLANK: print accept message, return 1
  *   Return 1 if accepted, 0 if rejected. */
 static int run(const char *input) {
-#error TODO 4: Run — init_tape, print initial, loop: check reject/accept, call step, print after each step, handle final result.
+    // TODO 4: Run — init_tape, print initial, loop: check reject/accept,
+    //  call step, print after each step, handle final result.
+
+    // init
+    char tape[TAPE_SIZE];
+    int head = 0;
+    int state = Q0;
+    init_tape(tape, TAPE_SIZE, input);
+    printf("Input: \"%s\"\n", input);
+
+    printf("Initial: ");
+    print_tape(tape, TAPE_SIZE, head, state);
+
+    int step_count = 0;
+
+    while (1) {
+        // 检查是否已经接受（可能在初始或上一步后）
+        if (state == Q3 && tape[head] == BLANK) {
+            printf("Result: ACCEPT (halted in q3 on blank)\n");
+            return 1;
+        }
+
+        int old_state = state;
+        char old_sym = tape[head];
+        state = step(tape, TAPE_SIZE, &head, state);
+        step_count++;
+
+        printf("Step %d: ", step_count);
+        print_tape(tape, TAPE_SIZE, head, state);
+
+        if (state == Q_REJECT) {
+            printf("Result: REJECT (no valid transition from %s on '%c')\n", STATE_NAMES[old_state], old_sym);
+            return 0;
+        }
+
+        // 如果刚执行完一步后进入接受状态，立即处理
+        if (state == Q3 && tape[head] == BLANK) {
+            printf("Result: ACCEPT (halted in q3 on blank)\n");
+            return 1;
+        }
+    }
 }
 
 /* ─── TODO 5: main ───
@@ -174,5 +242,10 @@ static int run(const char *input) {
  * Then call run("aaabbb") and run("aab").
  * Return 0. */
 int main(void) {
-#error TODO 5: Main — print header, call run("aaabbb"), call run("aab"), return 0.
+    // TODO 5: Main — print header, call run("aaabbb"), call run("aab"), return 0.
+    printf("=== Turing Machine Simulator for L = {a^n b^n | n >= 1} ===\n\n");
+    run("aaabbb");
+    printf("\n");
+    run("aab");
+    printf("\n");
 }
